@@ -319,23 +319,6 @@ Public Class LoginClientes
         End Set
     End Property
 
-    Property Nif() As Integer
-        Get
-            Nif = inif
-        End Get
-        Set(ByVal Vaule As Integer)
-            If Nif < 100000000 Then
-                userIsValid = False
-            ElseIf Nif > 999999999 Then
-                userIsValid = False
-            ElseIf Nif = Nothing Then
-                userIsValid = False
-            Else
-                userIsValid = True
-                inif = Vaule
-            End If
-        End Set
-    End Property
 
     '[PASSWORD]
     Public Sub HashClientLoginPassword()
@@ -379,7 +362,7 @@ Public Class LoginClientes
         sqlite_conn = New SQLiteConnection("Data Source=login.sqlite;Version=3;")
         sqlite_conn.Open()
         sqlite_cmd = sqlite_conn.CreateCommand()
-        sqlite_cmd.CommandText = "CREATE TABLE IF NOT EXISTS Login (username CHAR(255), hashpass CHAR(255));"
+        sqlite_cmd.CommandText = "CREATE TABLE IF NOT EXISTS Login (username CHAR(255), hashpass CHAR(255), nif INT);"
         sqlite_cmd.ExecuteNonQuery()
     End Sub
 
@@ -390,7 +373,7 @@ Public Class LoginClientes
         sqlite_conn = New SQLiteConnection("Data Source=login.sqlite;Version=3;")
         sqlite_conn.Open()
         sqlite_cmd = sqlite_conn.CreateCommand()
-        sqlite_cmd.CommandText = "INSERT INTO Login (username, hashpass) VALUES '" + iusername + "','" + ihashpassword + "';"
+        sqlite_cmd.CommandText = "INSERT INTO Login (username, hashpass, nif) VALUES '" + iusername + "','" + ihashpassword + "'," + Nif.ToString + ";"
         sqlite_cmd.ExecuteNonQuery()
     End Sub
 
