@@ -1,11 +1,6 @@
 ﻿Imports System.Data.SQLite
 
 
-Public Class SystemAlerts
-    Public Sub ErrorBox(_exeption)
-        MessageBox.Show(_exeption)
-    End Sub
-End Class
 
 Public Class Cliente
     'Atributos clientes
@@ -103,8 +98,8 @@ Public Class Cliente
         Return 3
     End Function
 
-    Private Function VerifyHash() As Boolean
-        If ihashPassword = "" Then
+    Private Function VerifyHash(_hashvar) As Boolean
+        If _hashvar = "" Then
             Return False
         End If
         Return True
@@ -191,6 +186,27 @@ Public Class Cliente
         Return hashreader
     End Function
 
+    Private Function ReadNomeClientes(_nif_cliente As Integer) As String
+        Dim sqlite_conn As SQLiteConnection
+        Dim sqlite_cmd As SQLiteCommand
+        Dim sqlite_datareader As SQLiteDataReader
+        sqlite_conn = New SQLiteConnection("Data Source=database.sqlite;Version=3;New=True;")
+        sqlite_conn.Open()
+        sqlite_cmd = sqlite_conn.CreateCommand()
+        sqlite_cmd.CommandText = "SELECT nome FROM Clientes WHERE nif =" + _nif_cliente.ToString + ";"
+        sqlite_datareader = sqlite_cmd.ExecuteReader()
+        Dim nomeReader As Double
+        Dim SystemAlerts As New SystemAlerts()
+        Try
+            While (sqlite_datareader.Read())
+                nomeReader = sqlite_datareader.GetInt32(0)
+            End While
+        Catch ex As Exception
+            SystemAlerts.ErrorBox(ex)
+        End Try
+        Return nomeReader
+    End Function
+
     Private Sub UpdateSaldoClientes(_nome_cliente As String, _saldo_novo As Double)
         Dim sqlite_conn As SQLiteConnection
         Dim sqlite_cmd As SQLiteCommand
@@ -212,17 +228,15 @@ Public Class Cliente
     End Sub
 
     '[PASSWORD]
-    Public Function HashClientePassword() As String
+    Public Sub HashClientePassword()
         Dim SystemAlerts As New SystemAlerts()
         Try
-            Dim hash = Sha1(PasswordString)
+            Dim hash = Sha1(ipasswordString)
             ihashPassword = hash
         Catch ex As Exception
-            Return ex.ToString
             SystemAlerts.ErrorBox(ex)
         End Try
-        Return "..."
-    End Function
+    End Sub
 
     Public Function ValidatePassword(_password, _nome_cliente) As Boolean
         Dim SystemAlerts As New SystemAlerts()
@@ -244,6 +258,8 @@ Public Class Cliente
     '[UPDATE/INSERT]
     Public Function UpdateClienteVaules() As String
         Dim SystemAlerts As New SystemAlerts()
+        hashIsDone = VerifyHash(ihashPassword)
+
         Try
             If userIsValid = True Then
                 InsertIntoClientes()
@@ -260,3 +276,161 @@ Public Class Cliente
 
 End Class
 
+
+Public Class LoginClientes
+    Inherits Cliente
+
+    '[ATRIBUTOS]
+    Private iusername As String
+    Private ihashpassword As String
+    Private ipassword As String
+    Private inif As Integer
+    Private userIsValid As Boolean
+    Private hashisdone As Boolean
+
+    '[PROPERTY]
+    Property Username() As String
+        Get
+            Username = iusername
+        End Get
+        Set(ByVal Vaule As String)
+            Dim result As Integer = FindSQLI(Vaule)
+            If result = 0 Then
+                userIsValid = False
+            ElseIf result = 1 Then
+                userIsValid = True
+                ihashpassword = Vaule
+            End If
+        End Set
+    End Property
+
+    Property Password() As String
+        Get
+            Password = ipassword
+        End Get
+        Set(ByVal Vaule As String)
+            Dim result As Integer = FindSQLI(Vaule)
+            If result = 0 Then
+                userIsValid = False
+            ElseIf result = 1 Then
+                userIsValid = True
+                ipassword = Vaule
+            End If
+        End Set
+    End Property
+
+    Property Nif() As Integer
+        Get
+            Nif = inif
+        End Get
+        Set(ByVal Vaule As Integer)
+            If Nif < 100000000 Then
+                userIsValid = False
+            ElseIf Nif > 999999999 Then
+                userIsValid = False
+            ElseIf Nif = Nothing Then
+                userIsValid = False
+            Else
+                userIsValid = True
+                inif = Vaule
+            End If
+        End Set
+    End Property
+
+    '[PASSWORD]
+    Public Sub HashClientLoginPassword()
+        Dim SystemAlerts As New SystemAlerts()
+        Try
+            Dim hash = Sha1(ipassword)
+            ipassword = hash
+        Catch ex As Exception
+            SystemAlerts.ErrorBox(ex)
+        End Try
+    End Sub
+
+    Public Function ValidatePassword(_password, _nome_cliente) As Boolean
+        Dim SystemAlerts As New SystemAlerts()
+        Dim hashgen = Sha1(_password)
+        Dim dbhashpass = ReadHashPassClientLogin(_nome_cliente)
+        Try
+            If hashgen = dbhashpass Then
+                Return True
+            ElseIf Not hashgen = dbhashpass Then
+                Return False
+            End If
+        Catch ex As Exception
+            Return False
+            SystemAlerts.ErrorBox(ex)
+        End Try
+    End Function
+
+    Private Function VerifyHash(_hashvar) As Boolean
+        If _hashvar = "" Then
+            Return False
+        End If
+        Return True
+    End Function
+
+
+    '[SQL]
+    Private Shared Sub NewClientLoginTable()
+        Dim sqlite_conn As SQLiteConnection
+        Dim sqlite_cmd As SQLiteCommand
+        sqlite_conn = New SQLiteConnection("Data Source=login.sqlite;Version=3;")
+        sqlite_conn.Open()
+        sqlite_cmd = sqlite_conn.CreateCommand()
+        sqlite_cmd.CommandText = "CREATE TABLE IF NOT EXISTS Login (username CHAR(255), hashpass CHAR(255));"
+        sqlite_cmd.ExecuteNonQuery()
+    End Sub
+
+
+    Private Sub InsertIntoClientLogin()
+        Dim sqlite_conn As SQLiteConnection
+        Dim sqlite_cmd As SQLiteCommand
+        sqlite_conn = New SQLiteConnection("Data Source=login.sqlite;Version=3;")
+        sqlite_conn.Open()
+        sqlite_cmd = sqlite_conn.CreateCommand()
+        sqlite_cmd.CommandText = "INSERT INTO Login (username, hashpass) VALUES '" + iusername + "','" + ihashpassword + "';"
+        sqlite_cmd.ExecuteNonQuery()
+    End Sub
+
+    Private Function ReadHashPassClientLogin(_nome_cliente As String) As Double
+        Dim sqlite_conn As SQLiteConnection
+        Dim sqlite_cmd As SQLiteCommand
+        Dim sqlite_datareader As SQLiteDataReader
+        sqlite_conn = New SQLiteConnection("Data Source=database.login;Version=3;New=True;")
+        sqlite_conn.Open()
+        sqlite_cmd = sqlite_conn.CreateCommand()
+        sqlite_cmd.CommandText = "SELECT hashpass FROM Login WHERE nome =" + _nome_cliente + ";"
+        sqlite_datareader = sqlite_cmd.ExecuteReader()
+        Dim hashreader As String
+        Dim SystemAlerts As New SystemAlerts()
+        Try
+            While (sqlite_datareader.Read())
+                hashreader = sqlite_datareader.GetString(0)
+            End While
+        Catch ex As Exception
+            SystemAlerts.ErrorBox(ex)
+        End Try
+        Return hashreader
+    End Function
+
+
+    '[UPDATE/INSERT]
+    Public Function UpdateClienteoginVaules() As String
+        Dim SystemAlerts As New SystemAlerts()
+        hashisdone = VerifyHash(ihashpassword)
+        Try
+            If userIsValid = True Then
+                InsertIntoClientLogin()
+                Return "Concluido!"
+            ElseIf (userIsValid = False) Or (hashisdone = False) Or (userIsValid = False And hashisdone = False) Then
+                Return "Os dados são invalidos logo o cliente não foi atualizado!"
+            End If
+        Catch ex As Exception
+            Return ex.ToString
+            SystemAlerts.ErrorBox(ex)
+        End Try
+        Return "..."
+    End Function
+End Class
