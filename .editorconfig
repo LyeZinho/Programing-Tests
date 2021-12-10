@@ -1,0 +1,4 @@
+﻿[*.vb]
+
+# BC42104: A variável é usada antes de receber um valor
+dotnet_diagnostic.BC42104.severity = warning
